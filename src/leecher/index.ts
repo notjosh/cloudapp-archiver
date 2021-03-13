@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import PLimit from 'p-limit';
 import axiosstreamdownload from '../axios/axiosstreamdownload';
 
 export type Downloadable = {
@@ -7,13 +8,11 @@ export type Downloadable = {
 };
 
 class Leecher {
-  private concurrency: number;
-
   private client: AxiosInstance;
+  private concurrency: number;
 
   constructor(concurrency = 10) {
     this.concurrency = concurrency;
-
     this.client = axios.create({
       timeout: 60_000,
     });
@@ -22,19 +21,25 @@ class Leecher {
   }
 
   pull = async (items: Downloadable[]): Promise<void> => {
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      try {
-        await this.download(item.url, item.path);
-        console.log(`✅ wrote to: ${item.path}`);
-      } catch (e) {
-        console.log(`❌ error downloading "${item.url}": ${e}`);
-      }
-    }
+    const limit = PLimit(this.concurrency);
+
+    const queue = items.map((item) =>
+      limit(() => this.download(item.url, item.path))
+    );
+
+    console.log('beginning queue...');
+    await Promise.all(queue);
+    console.log('...queue complete!');
   };
 
   private download = async (url: string, path: string): Promise<void> => {
-    return this.client.download(url, path);
+    try {
+      console.log('starting download @ ', path);
+      await this.client.download(url, path);
+      console.log(`✅ wrote to: ${path}`);
+    } catch (e) {
+      console.log(`❌ error downloading "${url}": ${e}`);
+    }
   };
 }
 

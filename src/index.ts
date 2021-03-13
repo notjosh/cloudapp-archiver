@@ -6,6 +6,7 @@ import fss, { promises as fs } from 'fs';
 import * as Path from 'path';
 import { AxiosItem } from './cloudapp/api-client/types';
 import Leecher from './leecher';
+import sanitize from 'sanitize-filename';
 
 class CloudappArchiver extends Command {
   static description = 'describe the command here';
@@ -46,8 +47,6 @@ class CloudappArchiver extends Command {
     }),
   };
 
-  // static args = [{ name: 'file' }];
-
   async run() {
     const { args, flags } = this.parse(CloudappArchiver);
 
@@ -77,7 +76,7 @@ class CloudappArchiver extends Command {
       await fs.mkdir(dir);
     }
 
-    const itemsPath = Path.join(dir, 'items.json');
+    const itemsPath = Path.join(dir, '_items.json');
     let items: AxiosItem[];
     if (
       flags.latest === true ||
@@ -104,7 +103,7 @@ class CloudappArchiver extends Command {
       url: item.source_url,
       path: Path.join(
         dir,
-        `${item.id}-${item.file_name_without_ext}${item.file_ext}`
+        sanitize(`${item.id}-${item.file_name_without_ext}${item.file_ext}`)
       ),
     }));
 
